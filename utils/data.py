@@ -14,14 +14,3 @@ def load_data(folder: str, extension: str, desc: str):
    print('{} read: {} images'.format(folder,len(data)))
    images, images_names = list(zip(*data))
    return images, images_names
-
-
-def image_to_windows(image: np.ndarray, n_rows: int, n_cols: int):
-    x, y = image.shape[0]/n_rows, image.shape[1]/n_cols
-    x, y = int(x), int(y)
-    windows = []
-    for i in range(n_rows):
-       for j in range(n_cols):
-           windows.append(image[i*x:(i+1)*x, j*y:(j+1)*y])
-    
-    return windows
