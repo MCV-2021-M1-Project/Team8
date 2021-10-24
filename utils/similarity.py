@@ -76,22 +76,34 @@ class Similarity(object):
         return np.array([self.compute_histogram_correlation_vector(vector1,vector2) for vector2 in db_feature_matrix])
 
 
+    
+    def hellinger_similarity_vector(self, vector1: np.ndarray, vector2: np.ndarray):
+        return cv2.compareHist(vector1, vector2, cv2.HISTCMP_BHATTACHARYYA)
+    
+    
+    def hellinger_similarity(self, vector1: np.ndarray, db_feature_matrix: np.ndarray):
+        return np.array([self.hellinger_similarity_vector(vector1,vector2) for vector2 in db_feature_matrix])
+    
+    
     """
     Computes similairty for an entire QuerySet
     """    
-    def compute_similarities(self, qs: np.ndarray,desc: str, similarity: str = 'cos') -> np.ndarray:
+    def compute_similarities(self, qs: np.ndarray, db_feature_matrix: np.ndarray, desc: str, similarity: str = 'cos') -> np.ndarray:
         # Perform similarity for each vector in the QuerySet
         if similarity == "cos":
-            return np.array([self.cos_similarity(vector) for vector in tqdm(qs,desc=desc)])
+            return np.array([self.cos_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
         
         elif similarity == "intersection":
-            return np.array([self.histogram_similarity(vector1=vector) for vector in tqdm(qs,desc=desc)])
+            return np.array([self.histogram_similarity(vector1=vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
         
         elif similarity == "euclidean":
-            return np.array([self.euclidean_similarity(vector) for vector in tqdm(qs,desc=desc)])
+            return np.array([self.euclidean_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
         
         elif similarity == "correlation":
-            return np.array([self.correlation_similarity(vector) for vector in tqdm(qs,desc=desc)])
+            return np.array([self.correlation_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
+        
+        elif similarity == "hellinger":
+            return np.array([self.hellinger_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
         
         elif similarity == "mixed":
-            return np.array([self.correlation_similarity(vector)+self.cos_similarity(vector) for vector in tqdm(qs,desc=desc)])
+            return np.array([self.correlation_similarity(vector,db_feature_matrix=db_feature_matrix)+self.cos_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
