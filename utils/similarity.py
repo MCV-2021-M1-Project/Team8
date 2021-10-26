@@ -6,6 +6,11 @@ import cv2
 import multiprocessing
 
 
+
+"""
+Similarity Class: Functions related to measure similarity between images
+based on their feature vectors. 
+"""
 class Similarity(object):
     
     def __init__(self):
@@ -54,12 +59,15 @@ class Similarity(object):
 
 
     """
-    Computes histogram intersection for each channel between 2 feature vectors
+    Computes histogram intersection for each channel between feature vector and all BBDD feature vectors
     """
     def histogram_similarity(self, vector1: np.ndarray, db_feature_matrix: np.ndarray) -> np.ndarray:
         return np.array([self.compute_histogram_intersect_vector(vector1,vector2) for vector2 in db_feature_matrix])
 
 
+    """
+    Computes histogram correlation for each channel between 2 feature vectors
+    """
     def compute_histogram_correlation_vector(self, vector1: np.ndarray, vector2: np.ndarray) -> np.ndarray:
         n_bins = int(len(vector1)/4)
         r = cv2.compareHist(vector1[:n_bins], vector2[:n_bins],cv2.HISTCMP_CORREL)
@@ -70,17 +78,25 @@ class Similarity(object):
 
 
     """
-    Computes histogram correlation bewteen vector and BBDD feature vectors
+    Computes histogram correlation between vector and BBDD feature vectors
     """
     def correlation_similarity(self, vector1: np.ndarray, db_feature_matrix: np.ndarray) -> np.ndarray:
         return np.array([self.compute_histogram_correlation_vector(vector1,vector2) for vector2 in db_feature_matrix])
 
 
-    
+    """
+    Computes hellinger distance between 2 feature vectors
+    """
     def hellinger_similarity_vector(self, vector1: np.ndarray, vector2: np.ndarray):
-        return 1 - cv2.compareHist(vector1, vector2, cv2.HISTCMP_BHATTACHARYYA)
+        # 0 is max similarity, 1 is min similarity
+        dist = cv2.compareHist(vector1, vector2, cv2.HISTCMP_BHATTACHARYYA)
+        # We turn 0 to big number and 1 to 0.
+        return dist/((1-dist)+1e-5) # 1.e-5 avoids division by zero
     
-    
+
+    """
+    Computes hellinger distance between vector and BBDD feature vectors
+    """
     def hellinger_similarity(self, vector1: np.ndarray, db_feature_matrix: np.ndarray):
         return np.array([self.hellinger_similarity_vector(vector1,vector2) for vector2 in db_feature_matrix])
     
@@ -107,3 +123,27 @@ class Similarity(object):
         
         elif similarity == "mixed":
             return np.array([self.correlation_similarity(vector,db_feature_matrix=db_feature_matrix)+self.cos_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
+    
+
+    """
+   Retrieves the top k similar images for a vector.
+    """    
+    def get_top_k_vector(self, similarity_vector: np.ndarray, db_files: List[str], k: int) -> List[str]:
+        # We get top K index of the vector (unordered)
+        idx = np.argpartition(similarity_vector, -k)[-k:]
+        
+        # Then we order index in order to get the ordered top k values
+        top_k = list(similarity_vector[idx])
+        sorted_top = list(sorted(top_k,reverse=True))
+        idx = [idx[top_k.index(i)] for i in sorted_top]
+        
+        # ImageCollection also saves in .files so we can easily retrieve them
+        return [db_files[i] for i in idx]
+
+
+    """
+    Retrieves the top k similar images for a QuerySet
+    """    
+    def get_top_k(self, similarity_matrix: np.ndarray, db_files: List[str], k: int, desc: str) -> List[List[str]]:
+        # Estimate top k values for all the Queryet
+        return [self.get_top_k_vector(similarity_vector = vector, db_files = db_files, k = k) for vector in tqdm(similarity_matrix, desc = desc)]

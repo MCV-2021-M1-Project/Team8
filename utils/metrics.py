@@ -1,14 +1,19 @@
+from typing import Tuple
 import numpy as np
 
-
-def iou_score(target: np.ndarray, prediction: np.ndarray):
+"""
+Computes Intersection Over Union between truth and results.
+"""
+def iou_score(target: np.ndarray, prediction: np.ndarray) -> float:
     intersection = np.logical_and(target, prediction)
     union = np.logical_or(target, prediction)
     iou_score = np.sum(intersection) / np.sum(union)
     return iou_score
 
-
-def prec_recall (true_labels: np.ndarray, pred_labels: np.ndarray):
+"""
+Computes Precision and Recall between truth and results.
+"""
+def prec_recall (true_labels: np.ndarray, pred_labels: np.ndarray) -> Tuple[float, float]:
     # Labels as Boolean
     true_labels = np.asarray(true_labels).astype(np.bool)
     pred_labels = np.asarray(pred_labels).astype(np.bool)
@@ -30,7 +35,10 @@ def prec_recall (true_labels: np.ndarray, pred_labels: np.ndarray):
     return precision, recall
     
 
-def f1_dice(im1: np.ndarray, im2: np.ndarray):
+"""
+Computes F1 Score between truth and results
+"""
+def f1_dice(im1: np.ndarray, im2: np.ndarray) -> float:
 
     # Images as Boolean
     im1 = np.asarray(im1).astype(np.bool)
