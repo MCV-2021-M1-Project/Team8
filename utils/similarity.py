@@ -78,7 +78,7 @@ class Similarity(object):
 
     
     def hellinger_similarity_vector(self, vector1: np.ndarray, vector2: np.ndarray):
-        return cv2.compareHist(vector1, vector2, cv2.HISTCMP_BHATTACHARYYA)
+        return 1 - cv2.compareHist(vector1, vector2, cv2.HISTCMP_BHATTACHARYYA)
     
     
     def hellinger_similarity(self, vector1: np.ndarray, db_feature_matrix: np.ndarray):
