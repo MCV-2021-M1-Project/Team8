@@ -140,10 +140,10 @@ class Similarity(object):
         # ImageCollection also saves in .files so we can easily retrieve them
         return [db_files[i] for i in idx]
 
-
     """
     Retrieves the top k similar images for a QuerySet
     """    
     def get_top_k(self, similarity_matrix: np.ndarray, db_files: List[str], k: int, desc: str) -> List[List[str]]:
         # Estimate top k values for all the Queryet
         return [self.get_top_k_vector(similarity_vector = vector, db_files = db_files, k = k) for vector in tqdm(similarity_matrix, desc = desc)]
+    

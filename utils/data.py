@@ -10,6 +10,7 @@ import os
 import pickle
 import multiprocessing
 import numpy as np
+import platform 
 
 
 """
@@ -87,10 +88,10 @@ class DataManager(object):
    """
    def save_results_1(self, results: List[List[str]], path: str, save: bool) -> List[List[int]]:
       # Vectorize function to apply to each element in results
-      get_ids = np.vectorize(self, self.get_image_id)
+      get_ids = np.vectorize(self.get_image_id)
       results = get_ids(results)
 
-      
+      print(results)
       # Creates Save Folder 
       if not os.path.exists(path):
          os.makedirs(path)
@@ -111,7 +112,7 @@ class DataManager(object):
       for element in results: # [[[top_k_image1.1],[top_k_image1.2]],[[top_k_image2]], ...]
          tmp = []
          for image in element: # Iterate through images from original image
-               tmp.append([self.get_image_id(string) for string in image])
+               tmp.append(self.get_image_id(image))
          
          result.append(tmp)
 
