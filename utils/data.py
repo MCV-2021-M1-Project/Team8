@@ -91,7 +91,6 @@ class DataManager(object):
       get_ids = np.vectorize(self.get_image_id)
       results = get_ids(results)
 
-      print(results)
       # Creates Save Folder 
       if not os.path.exists(path):
          os.makedirs(path)

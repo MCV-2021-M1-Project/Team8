@@ -91,7 +91,7 @@ class Similarity(object):
         # 0 is max similarity, 1 is min similarity
         dist = cv2.compareHist(vector1, vector2, cv2.HISTCMP_BHATTACHARYYA)
         # We turn 0 to big number and 1 to 0.
-        return dist/((1-dist)+1e-5) # 1.e-5 avoids division by zero
+        return (1-dist) # 1.e-5 avoids division by zero
     
 
     """
