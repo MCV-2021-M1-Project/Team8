@@ -24,4 +24,14 @@ M1. Introduction to Human and Computer Vision
     | Method 1 - Correlation | QSD2    | 0.1   | 0.177 | Performance decay due to "wild" images with background. |
     | Method 2 - Otsu        | QSD2    | 0.433 | 0.461 | After Cropping the images performance improves notably. |
     | Method 3 - Pixel Diff  | QSD2    | 0.3   | 0.386 | Overall worse performance method than Otsu.             |
-    
+
+
+### Week 2:
+
+### Week 3:
+
+- Base results on QSD1-W3: `MAP@10 Score: 85.0000% (25/30)`
+- Base + Text Removal_v1 on QSD1-W3: `MAP@10 Score: 78.2540% (23/30)`
+
+
+- Base results on QSD2-W3: `MAP@10 Score: 31.9444% (9/30)`

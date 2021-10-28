@@ -5,14 +5,20 @@ import matplotlib.pyplot as plt
 """
    Plot 1st Query Results
 """   
-def plot_image_and_similar(qs,top_qs) -> None:
+def plot_image_and_similar(qs,top_qs, topk=1) -> None:
     
     for i in range(len(qs)):
-        f, axarr = plt.subplots(1,2, figsize=(10,10))
-        base = qs[i]
-        query = imread(top_qs[i][0])
-        axarr[0].imshow(base)
-        axarr[0].title.set_text("Base")
-        axarr[1].imshow(query)
-        axarr[1].title.set_text("Query")
+        
+        query = qs[i]
+        f, axarr = plt.subplots(1,1+topk, figsize=(10,10))
+        axarr[0].imshow(query)
+        axarr[0].title.set_text("Query")
+        axarr[0].axis('off')
+        
+        for k in range(topk):
+            reference = imread(top_qs[i][k])
+            axarr[k+1].imshow(reference)
+            axarr[k+1].title.set_text(f"Top {k+1} BD")
+            axarr[k+1].axis('off')
+        
         plt.show()
