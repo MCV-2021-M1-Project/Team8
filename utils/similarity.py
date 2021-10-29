@@ -4,7 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import cv2
 import multiprocessing
-
+import textdistance
 
 
 """
@@ -123,20 +123,35 @@ class Similarity(object):
         
         elif similarity == "mixed":
             return np.array([self.correlation_similarity(vector,db_feature_matrix=db_feature_matrix)+self.cos_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
-    
+    """
+   Returns levensthein similarity of a string with the titles in the database
+    """
+    def levenshtein_text_similarity(self,qs:str,db_string_list:list) ->np.ndarray: 
+        return np.array([textdistance.levenshtein.normalized_similarity(qs,expected) for expected in db_string_list])
 
+    """
+    Computes similairty for an entire QuerySet
+    """    
+    def compute_string_similarities(self, qs: list, db_string_list: list, desc: str, similarity: str = 'levenshtein') -> np.ndarray:
+    # Perform similarity for each vector in the QuerySet
+        if similarity == "levenshtein":
+            return np.array([self.levenshtein_text_similarity(qs=detected,db_string_list=db_string_list) for detected in tqdm(qs,desc=desc)])
+
+    
     """
    Retrieves the top k similar images for a vector.
     """    
     def get_top_k_vector(self, similarity_vector: np.ndarray, db_files: List[str], k: int) -> List[str]:
         # We get top K index of the vector (unordered)
         idx = np.argpartition(similarity_vector, -k)[-k:]
-        
+        print(idx)
         # Then we order index in order to get the ordered top k values
         top_k = list(similarity_vector[idx])
+        print(top_k)
         sorted_top = list(sorted(top_k,reverse=True))
+        print(sorted_top)
         idx = [idx[top_k.index(i)] for i in sorted_top]
-        
+        print(idx)
         # ImageCollection also saves in .files so we can easily retrieve them
         return [db_files[i] for i in idx]
 

@@ -11,6 +11,7 @@ import pickle
 import multiprocessing
 import numpy as np
 import platform 
+import re 
 
 
 """
@@ -39,7 +40,6 @@ class DataManager(object):
    def read_image(self, path: str) -> Tuple[np.ndarray, np.ndarray]:
       return path,imread(path)
 
-
    """
    Reads all images at folder with chosen extension.
    Returns images and paths.
@@ -55,6 +55,44 @@ class DataManager(object):
       images_names, images  = list(zip(*data))
 
       return images, images_names
+
+   """
+   """
+   def read_text(self, path: str) -> str:
+       with open(path) as f: 
+         return path,f.read()
+
+   def load_text(self, folder: str, extension: str, desc: str) -> Tuple[str,str]:
+      # List files and read data
+     files = [folder+image for image in os.listdir(folder) if extension in image]
+     data = Parallel(n_jobs=self.n_process)(delayed(self.read_text)(file) for file in tqdm(files, desc = desc))
+     print(data)  
+     data = sorted(data) # Sort by path (0000.png, 0001.png, ...)
+     print('{} read: {} images'.format(folder,len(data)))
+
+      # Split Images and Paths
+     _ , text  = list(zip(*data))
+
+     return text
+    
+   """
+   Removes special characters froma a string
+   """
+   def clean_title(self, sentence:str,index:int) -> str:
+       title = sentence.split(',')[index].replace(')','').replace("'","").replace('\n','')
+       return re.sub("[^A-Za-z0-9- ]","",title)
+   """
+   Iterate over a list of strings and extracts author(index=0) or title(index=1) without any special character in a list
+   """
+   def extract_title(self,data:list,desc:str,index:int) -> list:
+       titles =[]
+       for sentence in tqdm(data, desc = desc):
+           if sentence == '\n':
+               titles.append('')
+           else:
+               title = self.clean_title(sentence,index)
+               titles.append(title)
+       return titles
 
 
    """
@@ -125,4 +163,5 @@ class DataManager(object):
          print("Results Saved!")
 
       return result
+
       

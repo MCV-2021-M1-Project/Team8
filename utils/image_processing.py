@@ -1,8 +1,9 @@
 from tqdm import tqdm
 from typing import List
-
+import pytesseract
 import cv2
 import numpy as np
+import re
 
 """
 Divides image into symetrically blocks (n_rows x n_cols blocks).
@@ -48,6 +49,7 @@ def calculate_histograms(data: np.ndarray,n_bins: int, n_cols: int, n_rows: int,
     return np.array(histograms)
 """
 Masks the detected text over an image with a rectangle mask of 0s. N_imgs is the expected number of text boxes to be removed 1 or 2 
+and returns the x,y,w,h for the rectangle used to mask
 """
 def text_removal_image(image:np.ndarray,num_images:int):
     
@@ -90,18 +92,22 @@ def text_removal_image(image:np.ndarray,num_images:int):
     
     bounded = np.zeros((img.shape))
     
-    #Loop to get the contour with the greatest area
+    #Loop to get the contour with the greatest area depending if one box or two have to be detected
     if num_images==1:
         area = 0
+        x1=0
+        y1=0
+        w1=0
+        h1=0
         for cnt in contours:
             area_1 = cv2.contourArea(cnt)
             if area_1 >= area:
                 area = area_1
-                x, y, w, h = cv2.boundingRect(cnt)
+                x1, y1, w1, h1 = cv2.boundingRect(cnt)
         
-        rect = cv2.rectangle(image, (x,y),(x+w,y+h) , (0,0,0), -1)
+        rect = cv2.rectangle(image, (x1,y1),(x1+w1,y1+h1) , (0,0,0), -1)
         
-        return image
+        return image, [x1,y1,w1,h1]
     if num_images==2:
         area_1 = 0
         area_2 = 0
@@ -110,21 +116,47 @@ def text_removal_image(image:np.ndarray,num_images:int):
             if area >= area_1:
                 area_1 = area
                 x1, y1, w1, h1 = cv2.boundingRect(cnt)
+               
             if area >= area_2:
                 area_2 = area
                 x2, y2, w2, h2 = cv2.boundingRect(cnt)
+                
         
         rect = cv2.rectangle(image, (x1,y1),(x1+w1,y1+h1) , (0,0,0), -1)
         rect = cv2.rectangle(image, (x2,y2),(x2+w2,y2+h2) , (0,0,0), -1)
-        return image
-    
-    
+        return image, [[x1,y1,w1,h1],[x2,y2,w2,h2]]    
+""""
+Applies text removal to a set
+"""
 def text_removal(data: np.ndarray,num_images,desc: str) -> np.ndarray:
     text_removed_image =[]
+    contours =[]
     for image in tqdm(data, desc = desc):
-        # Generate Blocks and their histogram
-        masked_images = text_removal_image(image,num_images)
+        # Generate masked images and the x,y,w,h
+        masked_images,coords = text_removal_image(image,num_images)
         text_removed_image.append(masked_images)
+        contours.extend(coords)
 
-    return np.array(text_removed_image)
+    return np.array(text_removed_image),contours
+#Detects text and returns the string of the title
+"""
+Returns the detected text of an image as a string with nonspecial characters
+"""
+def title_reading(image:np.ndarray,num_images:int) -> list:
+    im2 = image.copy()
+    _, [x_0,y_0,width,height] = text_removal_image(image,num_images)
+    # Cropping the text block for giving input to OCR
+    cropped = im2[y_0:y_0 + height, x_0:x_0 + width]
+    # Apply OCR on the cropped image
+    text = pytesseract.image_to_string(cropped)
+    return re.sub("[^A-Za-z0-9- ]","",text)
+
+#Generate list of titles    
+def text_reading(data:np.ndarray,num_images,desc:str) -> list:
+    detected_titles =[]
+    for image in tqdm(data, desc=desc):
+        title = title_reading(image,num_images)
+        detected_titles.append(title)
+    return(detected_titles)
+        
     
