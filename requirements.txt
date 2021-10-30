@@ -3,4 +3,5 @@ joblib
 ml_metrics
 tqdm
 scikit-image
-opencv-python 
+opencv-python
+pytesseract

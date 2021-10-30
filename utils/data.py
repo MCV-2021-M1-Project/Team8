@@ -140,28 +140,29 @@ class DataManager(object):
 
       return results
 
+   """
+   Fix results for multi-image retrieval
+   """
+   def fix_multi_image(self, results: List[int], results_files: List[str]) -> List[List[int]]:
+      final_results = []
+      partial_results = []
+      last_file = results_files[0]
 
-   """
-   Save Results properly formated for QS with multi-image
-   """
-   def save_results_2(self, results: List[List[str]], path: str, save: bool) -> List[List[int]]:
-      result = [] # Final Result
-      for element in results: # [[[top_k_image1.1],[top_k_image1.2]],[[top_k_image2]], ...]
-         tmp = []
-         for image in element: # Iterate through images from original image
-               tmp.append(self.get_image_id(image))
+      for i in range(len(results)):
+         # Append Results from same image (multi-image)
+         if last_file == results_files[i]:
+               partial_results.append(results[i][0])
+
+         # Different image so we create another list and submit the current
+         else:
+               final_results.append(partial_results)
+               partial_results = []
+               partial_results.append(results[i][0])
          
-         result.append(tmp)
+         last_file = results_files[i]
+      
+      final_results.append(partial_results)
 
-      # Creates Save Folder 
-      if not os.path.exists(path):
-         os.makedirs(path)
-
-      if save:
-      # Saves data
-         pickle.dump(obj = result,file = open(path+"/result.pkl","wb"))
-         print("Results Saved!")
-
-      return result
+      return final_results
 
       
