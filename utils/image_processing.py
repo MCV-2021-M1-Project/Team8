@@ -1,9 +1,14 @@
 from tqdm import tqdm
+from skimage.feature import hog, ORB, local_binary_pattern, multiblock_lbp
+from skimage.color import rgb2gray
+from skimage.transform import resize, integral_image
 from typing import List
+from joblib import Parallel, delayed
 import pytesseract
 import cv2
 import numpy as np
 import re
+
 
 """
 Divides image into symetrically blocks (n_rows x n_cols blocks).
@@ -158,5 +163,32 @@ def text_reading(data:np.ndarray,num_images,desc:str) -> list:
         title = title_reading(image,num_images)
         detected_titles.append(title)
     return(detected_titles)
-        
+
+
+def hog_image(image: np.ndarray) -> np.ndarray:
+    image = resize(image = image, output_shape=(300,300))
+    h_im, im = hog(image,orientations=9, pixels_per_cell=(8, 16),
+                    cells_per_block=(2, 2), visualize=True)
+    return im.astype(np.float32)
+
+def calculate_hog(data: np.ndarray, desc: str) -> np.ndarray:
+    return np.array(Parallel(n_jobs=-1)(delayed(hog_image)(file) for file in tqdm(data, desc = desc))).astype(np.float32)
+
+
+def lbp_image(image: np.ndarray) -> np.ndarray:
+    image = resize(image = image, output_shape=(300,300))
+    bw_image = rgb2gray(image)
+    return local_binary_pattern(image = bw_image, P = 5, R = 10).astype(np.float32)
+
+def lbp_block_image(image: np.ndarray) -> np.ndarray:
+    image = resize(image = image, output_shape=(300,300))
+    bw_image = (rgb2gray(image)*255).astype(np.uint8)
+    bw_image = integral_image(bw_image)
+    return np.array([multiblock_lbp(int_image = bw_image, r = 3, c = 3, width = int(bw_image.shape[0]/9), height = int(bw_image.shape[0]/9))])
+
+
+def calculate_lbp(data: np.ndarray, block: bool, desc: str) -> np.ndarray:
+    if not block:
+        return np.array(Parallel(n_jobs=-1)(delayed(lbp_image)(file) for file in tqdm(data, desc = desc))).astype(np.float32)
     
+    return np.array(Parallel(n_jobs=-1)(delayed(lbp_block_image)(file) for file in tqdm(data, desc = desc))).astype(np.float32)
