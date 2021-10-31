@@ -52,6 +52,39 @@ def calculate_histograms(data: np.ndarray,n_bins: int, n_cols: int, n_rows: int,
         histograms.append(sub_histograms)
             
     return np.array(histograms)
+
+def find_greatest_contour(image:np.ndarray,num_image:int) -> list:
+    contours, hierarchy = cv2.findContours(np.uint8(image), cv2.RETR_EXTERNAL,
+                                                 cv2.CHAIN_APPROX_NONE)
+    if num_image==1:
+        area = 0
+        x1=0
+        y1=0
+        w1=0
+        h1=0
+        for cnt in contours:
+            area_1 = cv2.contourArea(cnt)
+            if area_1 >= area:
+                area = area_1
+                x1, y1, w1, h1 = cv2.boundingRect(cnt)
+    
+        return [x1,y1,w1,h1]
+    
+    if num_image==2:
+        area_1 = 0
+        area_2 = 0
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area >= area_1:
+                area_1 = area
+                x1, y1, w1, h1 = cv2.boundingRect(cnt)
+               
+            if area >= area_2:
+                area_2 = area
+                x2, y2, w2, h2 = cv2.boundingRect(cnt)
+
+        return [[x1,y1,w1,h1],[x2,y2,w2,h2]]  
+
 """
 Masks the detected text over an image with a rectangle mask of 0s. N_imgs is the expected number of text boxes to be removed 1 or 2 
 and returns the x,y,w,h for the rectangle used to mask
@@ -86,64 +119,103 @@ def text_removal_image(image:np.ndarray,num_images:int):
     opening = cv2.morphologyEx(hat, cv2.MORPH_OPEN, kernel,iterations = 1)
 
     #Defining the kernels to use
-    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (80,18 ))
+    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (80,18))
 
     # Applying dilation on the threshold image
     dilation = cv2.dilate(opening, rect_kernel, iterations = 1)
 
-    # Finding contours
-    contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL,
-                                                 cv2.CHAIN_APPROX_NONE)
-    
-    bounded = np.zeros((img.shape))
-    
+   
+   
+    im_copy = image.copy()
     #Loop to get the contour with the greatest area depending if one box or two have to be detected
     if num_images==1:
-        area = 0
-        x1=0
-        y1=0
-        w1=0
-        h1=0
-        for cnt in contours:
-            area_1 = cv2.contourArea(cnt)
-            if area_1 >= area:
-                area = area_1
-                x1, y1, w1, h1 = cv2.boundingRect(cnt)
+        coords = find_greatest_contour(dilation,num_images) 
         
-        rect = cv2.rectangle(image, (x1,y1),(x1+w1,y1+h1) , (0,0,0), -1)
+        rect = cv2.rectangle(im_copy, (coords[0],coords[1]),(coords[0]+coords[2],coords[1]+coords[3]) , (0,0,0), -1)
         
-        return image, [x1,y1,w1,h1]
+        return im_copy, coords
     if num_images==2:
-        area_1 = 0
-        area_2 = 0
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if area >= area_1:
-                area_1 = area
-                x1, y1, w1, h1 = cv2.boundingRect(cnt)
-               
-            if area >= area_2:
-                area_2 = area
-                x2, y2, w2, h2 = cv2.boundingRect(cnt)
-                
+        coords = find_greatest_contour(dilation,num_images)       
         
-        rect = cv2.rectangle(image, (x1,y1),(x1+w1,y1+h1) , (0,0,0), -1)
-        rect = cv2.rectangle(image, (x2,y2),(x2+w2,y2+h2) , (0,0,0), -1)
-        return image, [[x1,y1,w1,h1],[x2,y2,w2,h2]]    
+        rect = cv2.rectangle(im_copy, (coords[0][0],coords[0][1]),(coords[0][0]+coords[0][2],coords[0][1]+coords[0][3]) , (0,0,0), -1)
+        rect = cv2.rectangle(im_copy, (coords[1][0],coords[1][1]),(coords[1][0]+coords[1][2],coords[1][1]+coords[1][3]) , (0,0,0), -1)
+        
+        return im_copy, coords
+"""
+Applies a morphological filter to the image
+"""
+def morph_filter(mask, kernel, filter):
+    return cv2.morphologyEx(mask, filter, np.ones(kernel, np.uint8))
+
+"""Masks with a  rectangle of 0s the detected text in the image. Return x,y,w,h"""
+def better_text_removal_image(image:np.ndarray,num_images:int):
+                             
+    value_hsv = cv2.cvtColor(image,cv2.COLOR_RGB2HSV)[:,:,2]
+    #Converting blacks to white and white to whites to whites
+    abs_v = np.absolute(value_hsv - np.amax(value_hsv) / 2)
+   
+    #Applying  blackhat morph operator and thresholding
+    blackhat = morph_filter(abs_v,(3,3),cv2.MORPH_BLACKHAT)
+    blackhat = blackhat / np.max(blackhat)
+    mask = np.zeros((image.shape[0], image.shape[1]))
+    mask[blackhat > 0.4] = 1
+    
+    mask = morph_filter(mask, (2, 10), cv2.MORPH_CLOSE)  ##Fill letter
+    mask = morph_filter(mask, (4, 4),
+                        cv2.MORPH_OPEN)  # Delete vetical kernel = (1,3) and horizontal lines kernel = (4,1). Total kernel = (4,3)
+    mask = morph_filter(mask, (1, 29), cv2.MORPH_CLOSE)  # Join letters
+    
+    
+    im_copy = image.copy()
+    #Detects greatest contour 
+    x1,y1,w1,h1 = find_greatest_contour(mask, 1)
+    
+    top = y1-int(h1*1.2/2)
+    bottom = y1+int(3*h1//2)
+    if top<0:
+        top = 0
+    if bottom>abs_v.shape[0]:
+        bottom = int(abs_v.shape[0])
+    
+    box = np.zeros((image.shape[0], image.shape[1]))
+    mask = np.zeros((box.shape[0], box.shape[1]))
+    
+    box[top:bottom, 30:-30] = blackhat[top:bottom,30:-30]
+    box = box / np.amax(box)
+    mask[box > 0.46] = 1
+    
+    #Applies morph filter to a smaller region to finally detect bounding box                          
+    mask = morph_filter(mask, (5, 14), cv2.MORPH_CLOSE)  # Fill letter
+    mask = morph_filter(mask, (4, 4),
+                        cv2.MORPH_OPEN)
+    mask = morph_filter(mask, (1, 91), cv2.MORPH_CLOSE)  # Join letters
+    mask = morph_filter(mask, (1, 2), cv2.MORPH_OPEN)  # Delete remaining vertical lines
+    
+    coords = find_greatest_contour(mask, 1)
+    rect = cv2.rectangle(im_copy, (coords[0],coords[1]),(coords[0]+coords[2],coords[1]+coords[3]) , (0,0,0), -1)
+                             
+    return im_copy, coords
 """"
 Applies text removal to a set
 """
-def text_removal(data: np.ndarray,num_images,desc: str) -> np.ndarray:
+def text_removal(data: np.ndarray,num_images: int,method: str, desc: str) -> np.ndarray:
     text_removed_image =[]
     contours =[]
-    for image in tqdm(data, desc = desc):
-        # Generate masked images and the x,y,w,h
-        masked_images,coords = text_removal_image(image,num_images)
-        text_removed_image.append(masked_images)
-        contours.extend(coords)
+    if method=='first':
+        for image in tqdm(data, desc = desc):
+            # Generate masked images and the x,y,w,h
+            masked_images,coords = text_removal_image(image,num_images)
+            text_removed_image.append(masked_images)
+            contours.extend(coords)
+    if method=='better':
+        for image in tqdm(data, desc = desc):
+            # Generate masked images and the x,y,w,h
+            masked_images,coords = better_text_removal_image(image,num_images)
+            text_removed_image.append(masked_images)
+            contours.extend(coords)
 
     return np.array(text_removed_image),contours
-#Detects text and returns the string of the title
+
 """
 Returns the detected text of an image as a string with nonspecial characters
 """
@@ -163,7 +235,6 @@ def text_reading(data:np.ndarray,num_images,desc:str) -> list:
         title = title_reading(image,num_images)
         detected_titles.append(title)
     return(detected_titles)
-
 
 def hog_image(image: np.ndarray) -> np.ndarray:
     image = resize(image = image, output_shape=(300,300))

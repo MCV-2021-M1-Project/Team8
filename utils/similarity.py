@@ -128,6 +128,11 @@ class Similarity(object):
     """
     def levenshtein_text_similarity(self,qs:str,db_string_list:list) ->np.ndarray: 
         return np.array([textdistance.levenshtein.normalized_similarity(qs,expected) for expected in db_string_list])
+    """
+   Returns jaccard similarity of a string with the titles in the database
+    """    
+    def jaccard_text_similarity(self,qs:str,db_string_list:list) ->np.ndarray: 
+        return np.array([textdistance.jaccard.normalized_similarity(qs,expected) for expected in db_string_list])
 
     """
     Computes similairty for an entire QuerySet
@@ -136,22 +141,41 @@ class Similarity(object):
     # Perform similarity for each vector in the QuerySet
         if similarity == "levenshtein":
             return np.array([self.levenshtein_text_similarity(qs=detected,db_string_list=db_string_list) for detected in tqdm(qs,desc=desc)])
-
+        if similarity == "jaccard":
+            return np.array([self.jaccard_text_similarity(qs=detected,db_string_list=db_string_list) for detected in tqdm(qs,desc=desc)])
+    """
     
+    """
+    def get_index_positions(self,list_of_elems, element):
+        ''' Returns the indexes of all occurrences of give element in
+        the list- listOfElements '''
+        index_pos_list = []
+        index_pos = 0
+        while True:
+            try:
+                # Search for item in list from indexPos to the end of list
+                index_pos = list_of_elems.index(element, index_pos)
+                # Add the index position in list
+                index_pos_list.append(index_pos)
+                index_pos += 1
+            except ValueError as e:
+                break
+        return index_pos_list
+
     """
    Retrieves the top k similar images for a vector.
     """    
     def get_top_k_vector(self, similarity_vector: np.ndarray, db_files: List[str], k: int) -> List[str]:
         # We get top K index of the vector (unordered)
         idx = np.argpartition(similarity_vector, -k)[-k:]
-        print(idx)
         # Then we order index in order to get the ordered top k values
         top_k = list(similarity_vector[idx])
-        print(top_k)
         sorted_top = list(sorted(top_k,reverse=True))
-        print(sorted_top)
-        idx = [idx[top_k.index(i)] for i in sorted_top]
-        print(idx)
+        sorted_top = list(dict.fromkeys(sorted_top))
+        sorted_index=[]
+        for j in sorted_top:  
+            sorted_index.extend(self.get_index_positions(top_k,j))
+        idx = [idx[m] for m in sorted_index]
         # ImageCollection also saves in .files so we can easily retrieve them
         return [db_files[i] for i in idx]
 
