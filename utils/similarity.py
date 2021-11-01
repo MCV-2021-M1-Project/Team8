@@ -91,7 +91,7 @@ class Similarity(object):
         # 0 is max similarity, 1 is min similarity
         dist = cv2.compareHist(vector1, vector2, cv2.HISTCMP_BHATTACHARYYA)
         # We turn 0 to big number and 1 to 0.
-        return (1-dist) # 1.e-5 avoids division by zero
+        return (1-dist)
     
 
     """
@@ -170,13 +170,16 @@ class Similarity(object):
         idx = np.argpartition(similarity_vector, -k)[-k:]
         # Then we order index in order to get the ordered top k values
         top_k = list(similarity_vector[idx])
+
         sorted_top = list(sorted(top_k,reverse=True))
         sorted_top = list(dict.fromkeys(sorted_top))
         sorted_index=[]
+
         for j in sorted_top:  
             sorted_index.extend(self.get_index_positions(top_k,j))
+
         idx = [idx[m] for m in sorted_index]
-        # ImageCollection also saves in .files so we can easily retrieve them
+
         return [db_files[i] for i in idx]
 
     """

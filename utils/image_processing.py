@@ -238,8 +238,8 @@ def text_reading(data:np.ndarray,num_images,desc:str) -> list:
 
 def hog_image(image: np.ndarray) -> np.ndarray:
     image = resize(image = image, output_shape=(300,300))
-    h_im, im = hog(image,orientations=9, pixels_per_cell=(8, 16),
-                    cells_per_block=(2, 2), visualize=True)
+    h_im, im = hog(image,orientations=8, pixels_per_cell=(16, 16),
+                    cells_per_block=(1, 1), visualize=True)
     return im.astype(np.float32)
 
 def calculate_hog(data: np.ndarray, desc: str) -> np.ndarray:
