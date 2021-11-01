@@ -8,6 +8,7 @@ import pytesseract
 import cv2
 import numpy as np
 import re
+import matplotlib.pyplot as plt
 
 
 """
@@ -56,6 +57,15 @@ def calculate_histograms(data: np.ndarray,n_bins: int, n_cols: int, n_rows: int,
 def find_greatest_contour(image:np.ndarray,num_image:int) -> list:
     contours, hierarchy = cv2.findContours(np.uint8(image), cv2.RETR_EXTERNAL,
                                                  cv2.CHAIN_APPROX_NONE)
+    x1=0
+    y1=0
+    w1=0
+    h1=0    
+    x2=0
+    y2=0
+    w2=0
+    h2=0
+   
     if num_image==1:
         area = 0
         x1=0
@@ -79,7 +89,7 @@ def find_greatest_contour(image:np.ndarray,num_image:int) -> list:
                 area_1 = area
                 x1, y1, w1, h1 = cv2.boundingRect(cnt)
                
-            if area >= area_2:
+            elif area >= area_2:
                 area_2 = area
                 x2, y2, w2, h2 = cv2.boundingRect(cnt)
 
@@ -170,8 +180,8 @@ def better_text_removal_image(image:np.ndarray,num_images:int):
     #Detects greatest contour 
     x1,y1,w1,h1 = find_greatest_contour(mask, 1)
     
-    top = y1-int(h1*1.2/2)
-    bottom = y1+int(3*h1//2)
+    top = y1-int(h1*3/2)
+    bottom = y1+int(3*h1/2)
     if top<0:
         top = 0
     if bottom>abs_v.shape[0]:
@@ -191,9 +201,13 @@ def better_text_removal_image(image:np.ndarray,num_images:int):
     mask = morph_filter(mask, (1, 91), cv2.MORPH_CLOSE)  # Join letters
     mask = morph_filter(mask, (1, 2), cv2.MORPH_OPEN)  # Delete remaining vertical lines
     
-    coords = find_greatest_contour(mask, 1)
-    rect = cv2.rectangle(im_copy, (coords[0],coords[1]),(coords[0]+coords[2],coords[1]+coords[3]) , (0,0,0), -1)
-                             
+    coords = find_greatest_contour(mask, num_images)
+    if num_images==1:
+        rect = cv2.rectangle(im_copy, (coords[0],coords[1]),(coords[0]+coords[2],coords[1]+coords[3]) , (0,0,0), -1)
+    if num_images==2:
+        rect = cv2.rectangle(im_copy, (coords[0][0],coords[0][1]),(coords[0][0]+coords[0][2],coords[0][1]+coords[0][3]) , (0,0,0), -1)
+        rect = cv2.rectangle(im_copy, (coords[1][0],coords[1][1]),(coords[1][0]+coords[1][2],coords[1][1]+coords[1][3]) , (0,0,0), -1)
+     
     return im_copy, coords
 """"
 Applies text removal to a set
@@ -221,12 +235,39 @@ Returns the detected text of an image as a string with nonspecial characters
 """
 def title_reading(image:np.ndarray,num_images:int) -> list:
     im2 = image.copy()
-    _, [x_0,y_0,width,height] = text_removal_image(image,num_images)
-    # Cropping the text block for giving input to OCR
-    cropped = im2[y_0:y_0 + height, x_0:x_0 + width]
-    # Apply OCR on the cropped image
-    text = pytesseract.image_to_string(cropped)
-    return re.sub("[^A-Za-z0-9- ]","",text)
+    if num_images==1:
+        _, [x_0,y_0,width,height] = text_removal_image(image,num_images)
+        # Cropping the text block for giving input to OCR
+        if x_0==0 and y_0==0 and width==0 and height ==0:
+            cropped = im2
+        else:
+            cropped = im2[y_0:y_0 + height, x_0:x_0 + width]
+        # Apply OCR on the cropped image
+        text = pytesseract.image_to_string(cropped)
+        return re.sub("[^A-Za-z0-9- ]","",text)
+    
+    if num_images==2:
+        _, coords = text_removal_image(image,num_images)
+        # Cropping the text block for giving input to OCR
+        if coords[0][0]==0 and coords[0][1]==0 and coords[0][2]==0 and coords[0][3]==0:
+            cropped_1 = im2
+        else:
+            cropped_1 = im2[coords[0][1]:coords[0][1]+coords[0][3],coords[0][0]:coords[0][0]+coords[0][2]]
+        
+        if coords[1][0]==0 and coords[1][1]==0 and coords[1][2]==0 and coords[1][3]==0:
+            cropped_2 = im2
+        else:
+            cropped_2 = im2[coords[1][1]:coords[1][1]+coords[1][3],coords[1][0]:coords[1][0]+coords[1][2]]
+        print(im2.shape)
+        print(coords)
+        plt.figure()
+        plt.imshow(cropped_2)
+        plt.show()
+        
+        text_1 = pytesseract.image_to_string(cropped_1)
+        text_2 = pytesseract.image_to_string(cropped_2)
+        
+        return (re.sub("[^A-Za-z0-9- ]","",text_1),re.sub("[^A-Za-z0-9- ]","",text_2))
 
 #Generate list of titles    
 def text_reading(data:np.ndarray,num_images,desc:str) -> list:
