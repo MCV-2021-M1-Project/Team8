@@ -243,9 +243,11 @@ def title_reading(image:np.ndarray,num_images:int) -> list:
         else:
             cropped = im2[y_0:y_0 + height, x_0:x_0 + width]
         # Apply OCR on the cropped image
+  
+        
         text = pytesseract.image_to_string(cropped)
         return re.sub("[^A-Za-z0-9- ]","",text)
-    
+        
     if num_images==2:
         _, coords = text_removal_image(image,num_images)
         # Cropping the text block for giving input to OCR
@@ -258,11 +260,6 @@ def title_reading(image:np.ndarray,num_images:int) -> list:
             cropped_2 = im2
         else:
             cropped_2 = im2[coords[1][1]:coords[1][1]+coords[1][3],coords[1][0]:coords[1][0]+coords[1][2]]
-        print(im2.shape)
-        print(coords)
-        plt.figure()
-        plt.imshow(cropped_2)
-        plt.show()
         
         text_1 = pytesseract.image_to_string(cropped_1)
         text_2 = pytesseract.image_to_string(cropped_2)
