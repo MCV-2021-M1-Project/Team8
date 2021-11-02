@@ -73,18 +73,29 @@ def background_crop (files, gt_masks= True, save_masks = False, plot_results=Tru
         
         # Morphology mask
         mask = base
+        
+        # opening 1) correct noise
         mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
         mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
         
+        # closing 1) get shapes
         mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11)), iterations = 1)
-        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7)), iterations = 1)
-        
+        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11)), iterations = 1)
+        # closing 2) get shapes
         mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
         mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
         
+        # gradient=dilation - erosion --> outline object
+        #g1 = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
+        #g2 = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
+        #mask = g1 - g2
+        
+        # opening -> closing define better edges
+        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations = 1)
         mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations = 1)
-        #mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
-        #mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
+        mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations = 1)
+        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations = 1)
+        
         
         # Finding contours
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -101,8 +112,8 @@ def background_crop (files, gt_masks= True, save_masks = False, plot_results=Tru
                 areas[area_cropped] = (x, y, x + w, y + h)
                 
         boxes = NMS(np.array(boxes), overlapThresh = 0.25)
-        
-        print ('contours detected:', len(boxes))
+        contours_detect = len(boxes)
+        #print ('contours detected:', len(boxes))
 
         # Produce mask
         morph_mask = mask.copy()
@@ -165,12 +176,15 @@ def background_crop (files, gt_masks= True, save_masks = False, plot_results=Tru
             axarr[1].title.set_text("Otsu's Binarized")
             axarr[1].axis('off')
             axarr[2].imshow(morph_mask, cmap="gray")
-            axarr[2].title.set_text("Morphology Mask")
+            axarr[2].title.set_text(f"Morphology Mask {contours_detect}")
             axarr[2].axis('off')
             axarr[3].imshow(mask, cmap="gray")
             axarr[3].title.set_text(f"Final Mask {np.round(mask_iou,2)} iou")
             axarr[3].axis('off')
-            axarr[4].imshow(gt_mask, cmap="gray")
+            if gt_masks: 
+                axarr[4].imshow(gt_mask, cmap="gray")
+            else:
+                axarr[4].imshow(mask, cmap="gray")
             axarr[4].title.set_text("GT Mask")
             axarr[4].axis('off')
             axarr[5].imshow(base_rgb)
