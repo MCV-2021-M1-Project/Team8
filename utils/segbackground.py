@@ -50,7 +50,7 @@ def NMS(boxes, overlapThresh = 0.4):
     #return only the boxes at the remaining indices
     return boxes[indices].astype(int)
 
-def background_crop (files, gt_masks= True, save_masks = False, plot_results=True):
+def background_crop (files, gt_masks= True, save_masks = False, plot_results=True, plot_rect=False):
     
     SCORES = []
     PREDICTIONS = {}
@@ -73,9 +73,16 @@ def background_crop (files, gt_masks= True, save_masks = False, plot_results=Tru
         
         # Morphology mask
         mask = base
-        mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10)), iterations = 1)
-        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8)), iterations = 1)
+        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
         mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
+        
+        mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11)), iterations = 1)
+        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7)), iterations = 1)
+        
+        mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
+        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations = 1)
+        
+        mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations = 1)
         #mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
         #mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
         
@@ -95,7 +102,7 @@ def background_crop (files, gt_masks= True, save_masks = False, plot_results=Tru
                 
         boxes = NMS(np.array(boxes), overlapThresh = 0.25)
         
-        #print ('contours detected:', len(boxes))
+        print ('contours detected:', len(boxes))
 
         # Produce mask
         morph_mask = mask.copy()
@@ -113,7 +120,9 @@ def background_crop (files, gt_masks= True, save_masks = False, plot_results=Tru
                 x, y, x2, y2 = box
                 cropped = base_rgb[y:y2, x:x2]
                 mask [y:y2, x:x2] = 1
-                #rect = cv2.rectangle(base_rgb, (x, y), (x2, y2), (0, 255, 0), 8)
+                if plot_rect:
+                    rect = cv2.rectangle(base_rgb, (x, y), (x2, y2), (0, 255, 0), 10)
+                    
                 #plt.imshow(cropped)
                 #plt.axis('off')
                 #plt.show()
@@ -124,7 +133,9 @@ def background_crop (files, gt_masks= True, save_masks = False, plot_results=Tru
             cropped = base_rgb[y:y2, x:x2]
             mask [y:y2, x:x2] = 1
             #print (x, y, x2, y2)
-            #rect = cv2.rectangle(base_rgb, (x, y), (x2, y2), (0, 255, 0), 8)
+            if plot_rect:
+                rect = cv2.rectangle(base_rgb, (x, y), (x2, y2), (0, 255, 0), 10)
+                
             PREDICTIONS[file] = boxes[0]
             RESULT.append(cropped)
             FILENAMES.append(file)
