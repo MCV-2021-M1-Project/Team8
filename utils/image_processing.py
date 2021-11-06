@@ -65,35 +65,48 @@ def find_greatest_contour(image:np.ndarray,num_image:int) -> list:
     y2=0
     w2=0
     h2=0
-   
+    x3=0
+    y3=0
+    w3=0
+    h3=0
+    area = []
+ 
     if num_image==1:
-        area = 0
-        x1=0
-        y1=0
-        w1=0
-        h1=0
         for cnt in contours:
-            area_1 = cv2.contourArea(cnt)
-            if area_1 >= area:
-                area = area_1
-                x1, y1, w1, h1 = cv2.boundingRect(cnt)
+            area.append(cv2.contourArea(cnt))
+        sorted_list = sorted(area,reverse=True)
+        top_n = sorted_list[0:num_image]
+        
+        x1, y1, w1, h1 = cv2.boundingRect(contours[area.index(top_n[0])])
     
         return [x1,y1,w1,h1]
     
     if num_image==2:
-        area_1 = 0
-        area_2 = 0
         for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if area >= area_1:
-                area_1 = area
-                x1, y1, w1, h1 = cv2.boundingRect(cnt)
-               
-            elif area >= area_2:
-                area_2 = area
-                x2, y2, w2, h2 = cv2.boundingRect(cnt)
+            area.append(cv2.contourArea(cnt))
+        sorted_list = sorted(area,reverse=True)
+        top_n = sorted_list[0:num_image]
+        
+        x1, y1, w1, h1 = cv2.boundingRect(contours[area.index(top_n[0])])
+        if len(top_n)==2:
+            x2, y2, w2, h2 = cv2.boundingRect(contours[area.index(top_n[1])])
 
         return [[x1,y1,w1,h1],[x2,y2,w2,h2]]  
+    
+    if num_image==3:
+        for cnt in contours:
+            area.append(cv2.contourArea(cnt))
+        sorted_list=sorted(area,reverse=True)
+        top_n = sorted_list[0:num_image]
+        x1, y1, w1, h1 = cv2.boundingRect(contours[area.index(top_n[0])])
+        if len(top_n)==2:
+            x2, y2, w2, h2 = cv2.boundingRect(contours[area.index(top_n[1])])
+        elif len(top_n)==3:
+            x2, y2, w2, h2 = cv2.boundingRect(contours[area.index(top_n[1])])
+            x3, y3, w3, h3 = cv2.boundingRect(contours[area.index(top_n[2])])
+        
+        return [[x1,y1,w1,h1],[x2,y2,w2,h2],[x3,y3,w3,h3]]  
+
 
 """
 Masks the detected text over an image with a rectangle mask of 0s. N_imgs is the expected number of text boxes to be removed 1 or 2 
@@ -209,6 +222,59 @@ def better_text_removal_image(image:np.ndarray,num_images:int):
         rect = cv2.rectangle(im_copy, (coords[1][0],coords[1][1]),(coords[1][0]+coords[1][2],coords[1][1]+coords[1][3]) , (0,0,0), -1)
      
     return im_copy, coords
+""" Method for semitransparent bounding boxes, it discards boxes that are too big"""
+def transparent_text_removal(image:np.ndarray, num_images:int)->np.ndarray:
+    
+    value_hsv = cv2.cvtColor(image,cv2.COLOR_RGB2HSV)[:,:,2]
+    
+    dst = cv2.cornerHarris(np.uint8(value_hsv),7,5,0.004)
+    dst = cv2.dilate(dst,None)
+    mask_corners = np.zeros((image.shape))
+    #result is dilated for marking the corners, not important
+    mask_corners = dst>0.1*dst.max()
+    mask = morph_filter(np.uint8(mask_corners), (2, 10), cv2.MORPH_CLOSE)  ##Fill letter
+    mask = morph_filter(mask, (4, 4),
+                        cv2.MORPH_OPEN)  # Delete vetical kernel = (1,3) and horizontal lines kernel = (4,1). Total kernel = (4,3)
+    mask = morph_filter(mask, (40, 80), cv2.MORPH_CLOSE)  # Join letters
+    #Detects 3 greatest contours
+    tops = []
+    bottoms = []
+    lefts = []
+    rights = []
+    contours = find_greatest_contour(mask,num_images)
+    
+    for i in range(0,num_images):
+        tops.append(contours[i][1]-int(contours[i][3]*1/2))
+        bottoms.append(contours[i][1]+int(contours[i][3]*3/2))
+    for i in range(0,len(tops)):
+        if tops[i]<0:
+            tops[i] = 0
+    for i in range(0,len(bottoms)):
+        if bottoms[i]>image.shape[0]:
+            bottoms[i] = int(image.shape[0])
+
+    dim = 0
+    im_copy = image.copy()
+    for m,n in zip(tops,bottoms):
+        if m ==0 and n == 0:
+            continue
+        
+        box = np.zeros((image.shape[0], image.shape[1]))
+        box[m:n,:] = cv2.cornerHarris(np.uint8(value_hsv[m:n,:]),7,5,0.004)
+        dst = cv2.dilate(box,None)
+        mask_corners = np.zeros((image.shape))
+        #result is dilated for marking the corners, not important
+        mask_corners = dst>0.05*dst.max()
+        mask = morph_filter(np.uint8(mask_corners), (10, 10), cv2.MORPH_CLOSE)  # Fill letter
+        mask = morph_filter(mask, (4, 4),
+                        cv2.MORPH_OPEN)
+        mask = morph_filter(mask, (40, 80), cv2.MORPH_CLOSE)  # Join letters
+        coords = find_greatest_contour(mask,1)
+        if coords[3]>image.shape[0]/2:
+            continue
+        rect = cv2.rectangle(im_copy, (coords[0],coords[1]),(coords[0]+coords[2],coords[1]+coords[3]) , (0,0,0), -1)
+    return im_copy, contours
+        
 """"
 Applies text removal to a set
 """
@@ -220,13 +286,19 @@ def text_removal(data: np.ndarray,num_images: int,method: str, desc: str) -> np.
             # Generate masked images and the x,y,w,h
             masked_images,coords = text_removal_image(image,num_images)
             text_removed_image.append(masked_images)
-            contours.extend(coords)
+            contours.append(coords)
     if method=='better':
         for image in tqdm(data, desc = desc):
             # Generate masked images and the x,y,w,h
             masked_images,coords = better_text_removal_image(image,num_images)
             text_removed_image.append(masked_images)
-            contours.extend(coords)
+            contours.append(coords)
+    if method=='transparent':
+        for image in tqdm(data, desc = desc):
+            # Generate masked images and the x,y,w,h
+            masked_images,coords = transparent_text_removal(image,num_images)
+            text_removed_image.append(masked_images)
+            contours.append(coords)
 
     return np.array(text_removed_image),contours
 
