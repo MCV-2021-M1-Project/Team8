@@ -337,6 +337,27 @@ def title_reading(image:np.ndarray,num_images:int) -> list:
         text_2 = pytesseract.image_to_string(cropped_2)
         
         return (re.sub("[^A-Za-z0-9- ]","",text_1),re.sub("[^A-Za-z0-9- ]","",text_2))
+    if num_images==3:
+        _, coords = transparent_text_removal(image,num_images)
+        # Cropping the text block for giving input to OCR
+        if coords[0][0]==0 and coords[0][1]==0 and coords[0][2]==0 and coords[0][3]==0:
+            text_1 = ''
+        else:
+            cropped_1 = im2[coords[0][1]:coords[0][1]+coords[0][3],coords[0][0]:coords[0][0]+coords[0][2]]
+            text_1 = pytesseract.image_to_string(cropped_1)
+        if coords[1][0]==0 and coords[1][1]==0 and coords[1][2]==0 and coords[1][3]==0:
+            text_2 = ''
+        else:
+            cropped_2 = im2[coords[1][1]:coords[1][1]+coords[1][3],coords[1][0]:coords[1][0]+coords[1][2]]
+            text_2 = pytesseract.image_to_string(cropped_2)
+        if coords[2][0]==0 and coords[2][1]==0 and coords[2][2]==0 and coords[2][3]==0:
+            text_3 = ''
+        else:
+            cropped_3 = im2[coords[2][1]:coords[2][1]+coords[2][3],coords[2][0]:coords[2][0]+coords[2][2]]
+            text_3 = pytesseract.image_to_string(cropped_3)
+            
+        
+        return (re.sub("[^A-Za-z0-9- ]","",text_1),re.sub("[^A-Za-z0-9- ]","",text_2),re.sub("[^A-Za-z0-9- ]","",text_3))
 
 #Generate list of titles    
 def text_reading(data:np.ndarray,num_images,desc:str) -> list:
