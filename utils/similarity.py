@@ -100,6 +100,22 @@ class Similarity(object):
     def hellinger_similarity(self, vector1: np.ndarray, db_feature_matrix: np.ndarray):
         return np.array([self.hellinger_similarity_vector(vector1,vector2) for vector2 in db_feature_matrix])
     
+
+
+    def match_descriptors(self, descriptor1, descriptor2):
+        try:
+            bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
+            matches = bf.match(descriptor1,descriptor2)
+            matches = sorted(matches, key = lambda x:x.distance)
+            #img3 = cv2.drawMatches(img1, keypoints_1, img2, keypoints_2, matches[:50], img2, flags=2)
+            return len(matches)
+        except:
+            return -1
+    
+    def generate_descriptors_matrix(self, descriptor1, db_feature_matrix):
+        return np.array([self.match_descriptors(descriptor1,descriptor2) for descriptor2 in db_feature_matrix])
+
+    
     
     """
     Computes similairty for an entire QuerySet
@@ -120,6 +136,9 @@ class Similarity(object):
         
         elif similarity == "hellinger":
             return np.array([self.hellinger_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
+        
+        elif similarity == "local":
+            return np.array([self.generate_descriptors_matrix(descriptor1=vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
         
         elif similarity == "mixed":
             return np.array([self.correlation_similarity(vector,db_feature_matrix=db_feature_matrix)+self.cos_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])

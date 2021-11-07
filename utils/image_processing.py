@@ -2,7 +2,7 @@ from tqdm import tqdm
 from skimage.feature import hog, ORB, local_binary_pattern, multiblock_lbp
 from skimage.color import rgb2gray
 from skimage.transform import resize, integral_image
-from typing import List
+from typing import List, Tuple
 from joblib import Parallel, delayed
 import pytesseract
 import cv2
@@ -394,3 +394,34 @@ def calculate_lbp(data: np.ndarray, block: bool, desc: str) -> np.ndarray:
         return np.array(Parallel(n_jobs=-1)(delayed(lbp_image)(file) for file in tqdm(data, desc = desc))).astype(np.float32)
     
     return np.array(Parallel(n_jobs=-1)(delayed(lbp_block_image)(file) for file in tqdm(data, desc = desc))).astype(np.float32)
+
+
+def calculate_orb_image(image: np.ndarray) -> np.ndarray:
+    orb = ORB(n_keypoints=100)
+    image = resize(image = image, output_shape=(300,300))
+    bw_image = rgb2gray(image)*255
+    bw_image = bw_image.astype(np.uint8)
+    plt.imshow(bw_image, cmap="gray")
+    plt.show()
+    orb.detect_and_extract(bw_image)
+    return orb.keypoints,orb.descriptors
+
+def calculate_orb(data: np.ndarray, desc: str) -> Tuple[List, List]:
+    features = [calculate_orb_image(file) for file in tqdm(data, desc = desc)]
+    keypoints, descriptors = list(zip(*features))
+    return keypoints, np.array(descriptors)
+
+
+def calculate_sift_image(image: np.ndarray) -> np.ndarray:
+    sift = cv2.xfeatures2d.SIFT_create(nfeatures=50)
+    image = resize(image = image, output_shape=(300,300))
+    bw_image = rgb2gray(image)*255
+    bw_image = bw_image.astype(np.uint8)
+    keypoints, descriptors = sift.detectAndCompute(bw_image,None)
+    return keypoints, descriptors
+
+
+def calculate_sift(data: np.ndarray, desc: str) -> Tuple[List, List]:
+    features = [calculate_sift_image(file) for file in tqdm(data, desc = desc)]
+    keypoints, descriptors = list(zip(*features))
+    return keypoints, np.array(descriptors)
