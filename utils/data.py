@@ -114,11 +114,14 @@ class DataManager(object):
    Image path to ID
    """
    def get_image_id(self, image: str) -> str:
-      # Extract BBBD_XXX.jpg from relative path
-      file = image.split("/")[3]
-      # Extract XXX id from BBBD_XXX.jpg 
-      id = file.replace(".jpg","").split("_")[1]
-      return int(id)
+      try:
+         # Extract BBBD_XXX.jpg from relative path
+         file = image.split("/")[3]
+         # Extract XXX id from BBBD_XXX.jpg 
+         id = file.replace(".jpg","").split("_")[1]
+         return int(id)
+      except:
+         return -1
 
 
    """

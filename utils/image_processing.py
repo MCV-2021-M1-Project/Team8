@@ -397,14 +397,12 @@ def calculate_lbp(data: np.ndarray, block: bool, desc: str) -> np.ndarray:
 
 
 def calculate_orb_image(image: np.ndarray) -> np.ndarray:
-    orb = ORB(n_keypoints=100)
+    orb = cv2.ORB_create(nfeatures=50)
     image = resize(image = image, output_shape=(300,300))
     bw_image = rgb2gray(image)*255
     bw_image = bw_image.astype(np.uint8)
-    plt.imshow(bw_image, cmap="gray")
-    plt.show()
-    orb.detect_and_extract(bw_image)
-    return orb.keypoints,orb.descriptors
+    keypoints, descriptors = orb.detectAndCompute(bw_image,None)
+    return keypoints, descriptors
 
 def calculate_orb(data: np.ndarray, desc: str) -> Tuple[List, List]:
     features = [calculate_orb_image(file) for file in tqdm(data, desc = desc)]

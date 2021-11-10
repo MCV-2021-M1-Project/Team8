@@ -2,6 +2,7 @@ from joblib import Parallel,delayed
 from typing import Tuple, List
 from tqdm import tqdm
 import numpy as np
+import matplotlib.pyplot as plt
 import cv2
 import multiprocessing
 import textdistance
@@ -98,24 +99,37 @@ class Similarity(object):
     Computes hellinger distance between vector and BBDD feature vectors
     """
     def hellinger_similarity(self, vector1: np.ndarray, db_feature_matrix: np.ndarray):
-        return np.array([self.hellinger_similarity_vector(vector1,vector2) for vector2 in db_feature_matrix])
+        return np.array([self.hellinger_similarity_vector(vector1, vector2) for vector2 in db_feature_matrix])
     
 
 
-    def match_descriptors(self, descriptor1, descriptor2):
+    def match_descriptors(self, descriptor1, descriptor2, plot = False):
         try:
-            bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
-            matches = bf.match(descriptor1,descriptor2)
-            matches = sorted(matches, key = lambda x:x.distance)
-            #img3 = cv2.drawMatches(img1, keypoints_1, img2, keypoints_2, matches[:50], img2, flags=2)
-            return len(matches)
-        except:
-            return -1
-    
-    def generate_descriptors_matrix(self, descriptor1, db_feature_matrix):
-        return np.array([self.match_descriptors(descriptor1,descriptor2) for descriptor2 in db_feature_matrix])
+            # Fast Matcher
+            index_params = dict(algorithm = 0, trees = 5)
+            search_params = dict(checks=50)
+            matcher = cv2.FlannBasedMatcher(index_params, search_params)
+            
+            # Matching descriptors
+            matches = matcher.knnMatch(descriptor1, descriptor2, k = 2)
+            # Delete possible false positives
+            matches = [m for m,n in matches if m.distance < 0.7*n.distance]
 
+            return len(matches)
+        
+        except:
+            return 0
+                    
     
+    def generate_distances(self, descriptor1, db_feature_matrix):
+        distances = np.array([self.match_descriptors(descriptor1,descriptor2) for descriptor2 in db_feature_matrix])
+        div = np.sqrt(np.sum(distances**2))
+        
+        if div == 0:
+            return np.zeros_like(distances)
+        
+        return distances/div
+        
     
     """
     Computes similairty for an entire QuerySet
@@ -138,7 +152,7 @@ class Similarity(object):
             return np.array([self.hellinger_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
         
         elif similarity == "local":
-            return np.array([self.generate_descriptors_matrix(descriptor1=vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
+            return np.array([self.generate_distances(descriptor1=vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
         
         elif similarity == "mixed":
             return np.array([self.correlation_similarity(vector,db_feature_matrix=db_feature_matrix)+self.cos_similarity(vector,db_feature_matrix=db_feature_matrix) for vector in tqdm(qs,desc=desc)])
@@ -189,6 +203,11 @@ class Similarity(object):
         idx = np.argpartition(similarity_vector, -k)[-k:]
         # Then we order index in order to get the ordered top k values
         top_k = list(similarity_vector[idx])
+        
+        not_in_db = np.all((np.array(top_k) <= 0.5))
+        
+        if not_in_db:
+            return [-1 for i in range(k)]
 
         sorted_top = list(sorted(top_k,reverse=True))
         sorted_top = list(dict.fromkeys(sorted_top))
