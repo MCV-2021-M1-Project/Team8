@@ -198,13 +198,13 @@ class Similarity(object):
     """
    Retrieves the top k similar images for a vector.
     """    
-    def get_top_k_vector(self, similarity_vector: np.ndarray, db_files: List[str], k: int) -> List[str]:
+    def get_top_k_vector(self, similarity_vector: np.ndarray, db_files: List[str], k: int, th: int) -> List[str]:
         # We get top K index of the vector (unordered)
         idx = np.argpartition(similarity_vector, -k)[-k:]
         # Then we order index in order to get the ordered top k values
         top_k = list(similarity_vector[idx])
         
-        not_in_db = np.all((np.array(top_k) <= 0.5))
+        not_in_db = np.all((np.array(top_k) <= th))
         
         if not_in_db:
             return [-1 for i in range(k)]
@@ -223,7 +223,13 @@ class Similarity(object):
     """
     Retrieves the top k similar images for a QuerySet
     """    
-    def get_top_k(self, similarity_matrix: np.ndarray, db_files: List[str], k: int, desc: str) -> List[List[str]]:
+    def get_top_k(self, similarity_matrix: np.ndarray, db_files: List[str], k: int, desc: str, th: int, progress: bool) -> List[List[str]]:
         # Estimate top k values for all the Queryet
-        return [self.get_top_k_vector(similarity_vector = vector, db_files = db_files, k = k) for vector in tqdm(similarity_matrix, desc = desc)]
+        if progress:
+            data = tqdm(similarity_matrix, desc = desc)
+        else:
+            data = similarity_matrix
+            
+        return [self.get_top_k_vector(similarity_vector = vector, db_files = db_files, k = k, th = th) for vector in data]
+    
     
