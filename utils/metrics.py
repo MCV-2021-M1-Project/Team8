@@ -48,3 +48,16 @@ def f1_dice(im1: np.ndarray, im2: np.ndarray) -> float:
     intersection = np.logical_and(im1, im2)
 
     return 2. * intersection.sum() / (im1.sum() + im2.sum())
+
+"""
+Computer the error between the image's rotation angle and the predicted one
+"""
+def angular_error(ground, pred):
+
+    # Change from [-90, 90] to [0, 180]
+    if pred > 0:
+        pred = 180 - pred
+    elif pred < 0:
+        pred = -pred
+
+    return min(abs(ground-pred), abs(180-ground) + pred, abs(180-pred) + ground)

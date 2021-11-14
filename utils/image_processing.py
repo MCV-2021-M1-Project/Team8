@@ -398,7 +398,7 @@ def calculate_lbp(data: np.ndarray, block: bool, desc: str) -> np.ndarray:
 
 def calculate_orb_image(image: np.ndarray) -> np.ndarray:
     orb = cv2.ORB_create(nfeatures=1000)
-    image = resize(image = image, output_shape=(300,300))
+    image = resize(image = image, output_shape=(500,500))
     bw_image = rgb2gray(image)*255
     bw_image = bw_image.astype(np.uint8)
     keypoints, descriptors = orb.detectAndCompute(bw_image,None)
@@ -412,7 +412,7 @@ def calculate_orb(data: np.ndarray, desc: str) -> Tuple[List, List]:
 
 def calculate_sift_image(image: np.ndarray) -> np.ndarray:
     sift = cv2.xfeatures2d.SIFT_create(nfeatures=1000)
-    image = resize(image = image, output_shape=(300,300))
+    image = resize(image = image, output_shape=(500,500))
     bw_image = rgb2gray(image)*255
     bw_image = bw_image.astype(np.uint8)
     keypoints, descriptors = sift.detectAndCompute(bw_image,None)
